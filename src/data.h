@@ -46,6 +46,8 @@ typedef struct load_args{
     int nh;
     int nw;
     int num_boxes;
+    int num_rows;
+    int num_cols;
     int min, max, size;
     int classes;
     int background;

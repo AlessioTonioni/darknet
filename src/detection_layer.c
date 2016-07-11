@@ -10,7 +10,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-detection_layer make_detection_layer(int batch, int inputs, int n, int side, int classes, int coords, int rescore)
+detection_layer make_detection_layer(int batch, int inputs, int n, int rows, int cols, int classes, int coords, int rescore)
 {
     detection_layer l = {0};
     l.type = DETECTION;
@@ -21,11 +21,13 @@ detection_layer make_detection_layer(int batch, int inputs, int n, int side, int
     l.classes = classes;
     l.coords = coords;
     l.rescore = rescore;
-    l.side = side;
-    assert(side*side*((1 + l.coords)*l.n + l.classes) == inputs);
+    //l.side = side;
+    l.rows = rows;
+    l.cols = cols;
+    assert(rows*cols*((1 + l.coords)*l.n + l.classes) == inputs);
     l.cost = calloc(1, sizeof(float));
     l.outputs = l.inputs;
-    l.truths = l.side*l.side*(1+l.coords+l.classes);
+    l.truths = l.rows*l.cols*(1+l.coords+l.classes);
     l.output = calloc(batch*l.outputs, sizeof(float));
     l.delta = calloc(batch*l.outputs, sizeof(float));
 #ifdef GPU
@@ -41,7 +43,7 @@ detection_layer make_detection_layer(int batch, int inputs, int n, int side, int
 
 void forward_detection_layer(const detection_layer l, network_state state)
 {
-    int locations = l.side*l.side;
+    int locations = l.rows*l.cols;
     int i,j;
     memcpy(l.output, state.input, l.outputs*l.batch*sizeof(float));
     int b;
@@ -94,14 +96,14 @@ void forward_detection_layer(const detection_layer l, network_state state)
                 }
 
                 box truth = float_to_box(state.truth + truth_index + 1 + l.classes);
-                truth.x /= l.side;
-                truth.y /= l.side;
+                truth.x /= l.cols;
+                truth.y /= l.rows;
 
                 for(j = 0; j < l.n; ++j){
                     int box_index = index + locations*(l.classes + l.n) + (i*l.n + j) * l.coords;
                     box out = float_to_box(l.output + box_index);
-                    out.x /= l.side;
-                    out.y /= l.side;
+                    out.x /= l.cols;
+                    out.y /= l.rows;
 
                     if (l.sqrt){
                         out.w = out.w*out.w;
@@ -139,8 +141,8 @@ void forward_detection_layer(const detection_layer l, network_state state)
                 int tbox_index = truth_index + 1 + l.classes;
 
                 box out = float_to_box(l.output + box_index);
-                out.x /= l.side;
-                out.y /= l.side;
+                out.x /= l.cols;
+                out.y /= l.rows;
                 if (l.sqrt) {
                     out.w = out.w*out.w;
                     out.h = out.h*out.h;
@@ -224,7 +226,7 @@ void forward_detection_layer_gpu(const detection_layer l, network_state state)
     float *in_cpu = calloc(l.batch*l.inputs, sizeof(float));
     float *truth_cpu = 0;
     if(state.truth){
-        int num_truth = l.batch*l.side*l.side*(1+l.coords+l.classes);
+        int num_truth = l.batch*l.rows*l.cols*(1+l.coords+l.classes);
         truth_cpu = calloc(num_truth, sizeof(float));
         cuda_pull_array(state.truth, truth_cpu, num_truth);
     }

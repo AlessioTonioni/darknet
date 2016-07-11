@@ -1,9 +1,9 @@
-GPU=0
-CUDNN=0
-OPENCV=0
+GPU=1
+OPENCV=1
+CUDNN=1
 DEBUG=0
 
-ARCH= --gpu-architecture=compute_52 --gpu-code=compute_52
+ARCH= --gpu-architecture=compute_50 --gpu-code=compute_50
 
 VPATH=./src/
 EXEC=darknet
@@ -31,7 +31,7 @@ endif
 
 ifeq ($(GPU), 1) 
 COMMON+= -DGPU -I/usr/local/cuda/include/
-CFLAGS+= -DGPU
+CFLAGS+= -DGPU -D_FORCE_INLINES
 LDFLAGS+= -L/usr/local/cuda/lib64 -lcuda -lcudart -lcublas -lcurand
 endif
 

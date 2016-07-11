@@ -13,7 +13,7 @@
 #ifdef OPENCV
 #include "opencv2/highgui/highgui_c.h"
 #include "opencv2/imgproc/imgproc_c.h"
-void convert_detections(float *predictions, int classes, int num, int square, int side, int w, int h, float thresh, float **probs, box *boxes, int only_objectness);
+void convert_detections(float *predictions, int classes, int num, int square, int rows, int cols, int w, int h, float thresh, float **probs, box *boxes, int only_objectness);
 
 static char **demo_names;
 static image *demo_labels;
@@ -58,8 +58,8 @@ void *detect_in_thread(void *ptr)
     mean_arrays(predictions, FRAMES, l.outputs, avg);
 
     free_image(det_s);
-    convert_detections(avg, l.classes, l.n, l.sqrt, l.side, 1, 1, demo_thresh, probs, boxes, 0);
-    if (nms > 0) do_nms(boxes, probs, l.side*l.side*l.n, l.classes, nms);
+    convert_detections(avg, l.classes, l.n, l.sqrt, l.rows, l.cols, 1, 1, demo_thresh, probs, boxes, 0);
+    if (nms > 0) do_nms(boxes, probs, l.rows*l.cols*l.n, l.classes, nms);
     printf("\033[2J");
     printf("\033[1;1H");
     printf("\nFPS:%.1f\n",fps);
@@ -69,7 +69,7 @@ void *detect_in_thread(void *ptr)
     det = images[(demo_index + FRAMES/2 + 1)%FRAMES];
     demo_index = (demo_index + 1)%FRAMES;
 
-    draw_detections(det, l.side*l.side*l.n, demo_thresh, boxes, probs, demo_names, demo_labels, demo_classes);
+    draw_detections(det, l.rows*l.cols*l.n, demo_thresh, boxes, probs, demo_names, demo_labels, demo_classes);
 
     return 0;
 }
@@ -106,7 +106,7 @@ void demo(char *cfgfile, char *weightfile, float thresh, int cam_index, const ch
         cap = cvCaptureFromCAM(cam_index);
     }
 
-    if(!cap) error("Couldn't connect to webcam.\n");
+    if(!cap) error("Couldn't connect to webcam or couldn't laod video file.\n");
 
     detection_layer l = net.layers[net.n-1];
     int j;
@@ -115,9 +115,9 @@ void demo(char *cfgfile, char *weightfile, float thresh, int cam_index, const ch
     for(j = 0; j < FRAMES; ++j) predictions[j] = (float *) calloc(l.outputs, sizeof(float));
     for(j = 0; j < FRAMES; ++j) images[j] = make_image(1,1,3);
 
-    boxes = (box *)calloc(l.side*l.side*l.n, sizeof(box));
-    probs = (float **)calloc(l.side*l.side*l.n, sizeof(float *));
-    for(j = 0; j < l.side*l.side*l.n; ++j) probs[j] = (float *)calloc(l.classes, sizeof(float *));
+    boxes = (box *)calloc(l.rows*l.cols*l.n, sizeof(box));
+    probs = (float **)calloc(l.rows*l.cols*l.n, sizeof(float *));
+    for(j = 0; j < l.rows*l.cols*l.n; ++j) probs[j] = (float *)calloc(l.classes, sizeof(float *));
 
     pthread_t fetch_thread;
     pthread_t detect_thread;

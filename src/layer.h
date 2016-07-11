@@ -55,6 +55,8 @@ struct layer{
     int groups;
     int size;
     int side;
+    int rows;
+    int cols;
     int stride;
     int pad;
     int sqrt;
