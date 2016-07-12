@@ -13,6 +13,9 @@ extern "C" {
 #include <sys/time.h>
 }
 
+/* Change class number here */
+#define CLS_NUM 2
+
 #ifdef OPENCV
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
@@ -54,12 +57,12 @@ void *detect_in_thread(void *ptr)
     float *predictions = network_predict(net, X);
     free_image(det_s);
     convert_yolo_detections(predictions, l.classes, l.n, l.sqrt, l.side, 1, 1, demo_thresh, probs, boxes, 0);
-    if (nms > 0) do_nms(boxes, probs, l.side*l.side*l.n, l.classes, nms);
+    if (nms > 0) do_nms(boxes, probs, l.rows*l.cols*l.n, l.classes, nms);
     printf("\033[2J");
     printf("\033[1;1H");
     printf("\nFPS:%.0f\n",fps);
     printf("Objects:\n\n");
-    draw_detections(det, l.side*l.side*l.n, demo_thresh, boxes, probs, voc_names, voc_labels, 20);
+    draw_detections(det, l.rows*l.cols*l.n, demo_thresh, boxes, probs, voc_names, voc_labels, CLS_NUM);
     return 0;
 }
 
