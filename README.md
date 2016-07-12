@@ -6,3 +6,6 @@ Darknet is an open source neural network framework written in C and CUDA. It is 
 For more information see the [Darknet project website](http://pjreddie.com/darknet).
 
 For questions or issues please use the [Google Group](https://groups.google.com/forum/#!forum/darknet).
+
+#About This Fork#
+This Fork allows to have an asymmetric grid in the final detection layer of yolo.
