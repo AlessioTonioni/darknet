@@ -28,6 +28,7 @@ static image det  ;
 static image det_s;
 static image disp = {0};
 static CvCapture * cap;
+static CvVideoWriter * cap_out;
 static float fps = 0;
 static float demo_thresh = 0;
 
@@ -36,12 +37,28 @@ static int demo_index = 0;
 static image images[FRAMES];
 static float *avg;
 
+static int w, h, depth, c, step= 0;
+
+static int save = 1;
+
 void *fetch_in_thread(void *ptr)
 {
     in = get_image_from_stream(cap);
     if(!in.data){
         error("Stream closed.");
     }
+
+    if(save==1 && step==0)
+    {
+        IplImage* src = cvQueryFrame(cap);
+        w = src->width;
+        h = src->height;
+        c = src->nChannels;
+        depth = src->depth; 
+        step = src->widthStep;
+        printf("w:%d h:%d c:%d depth:%d step:%d\n",w,h,c,depth,step);
+    }
+
     in_s = resize_image(in, net.w, net.h);
     return 0;
 }
@@ -71,6 +88,13 @@ void *detect_in_thread(void *ptr)
 
     draw_detections(det, l.rows*l.cols*l.n, demo_thresh, boxes, probs, demo_names, demo_labels, demo_classes);
 
+    if(save==1)
+    {
+        IplImage* outputIpl= image_to_Ipl(det, w, h, depth, c, step);
+        cvWriteFrame(cap_out, outputIpl);
+        cvReleaseImage(&outputIpl);
+    }
+
     return 0;
 }
 
@@ -83,9 +107,10 @@ double get_wall_time()
     return (double)time.tv_sec + (double)time.tv_usec * .000001;
 }
 
-void demo(char *cfgfile, char *weightfile, float thresh, int cam_index, const char *filename, char **names, image *labels, int classes, int frame_skip)
+void demo(char *cfgfile, char *weightfile, float thresh, int cam_index, const char *filename, char **names, image *labels, int classes, int frame_skip, int save_arg)
 {
     //skip = frame_skip;
+    save = save_arg;
     int delay = frame_skip;
     demo_names = names;
     demo_labels = labels;
@@ -107,6 +132,11 @@ void demo(char *cfgfile, char *weightfile, float thresh, int cam_index, const ch
     }
 
     if(!cap) error("Couldn't connect to webcam or couldn't laod video file.\n");
+
+    if(save == 1){
+        CvSize S = cvSize((int)(cvGetCaptureProperty(cap,CV_CAP_PROP_FRAME_WIDTH)), (int)(cvGetCaptureProperty(cap,CV_CAP_PROP_FRAME_HEIGHT)));
+        cap_out = cvCreateVideoWriter("out.avi", CV_FOURCC('D','I','V','X'), cvGetCaptureProperty(cap,CV_CAP_PROP_FPS), S, 1);
+    }
 
     detection_layer l = net.layers[net.n-1];
     int j;

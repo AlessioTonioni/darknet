@@ -929,6 +929,22 @@ image ipl_to_image(IplImage* src)
     return out;
 }
 
+IplImage* image_to_Ipl(image img, int w, int h, int depth, int c, int step)
+{
+   int i, j, k, count= 0; 
+   IplImage* src= cvCreateImage(cvSize(w, h), depth, c);
+
+    for(k= 0; k < c; ++k){
+        for(i = 0; i < h; ++i){
+            for(j = 0; j < w; ++j){
+        src->imageData[i*step + j*c + k] = img.data[count++] * 255.;
+        }
+         }
+          }
+   cvCvtColor(src, src, CV_RGB2BGR);
+   return src;
+}
+
 image load_image_cv(char *filename, int channels)
 {
     IplImage* src = 0;
