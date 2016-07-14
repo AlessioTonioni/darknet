@@ -231,7 +231,7 @@ void validate_yolo(char *cfgfile, char *weightfile, char *val_images, char *resu
     fprintf(stderr, "Total Detection Time: %f Seconds\n", (double)(time(0) - start));
 }
 
-void validate_yolo_recall(char *cfgfile, char *weightfile, char *val_images, char *out_dir)
+void validate_yolo_recall(char *cfgfile, char *weightfile, char *val_images, char *out_dir, float th)
 {
     network net = parse_network_cfg(cfgfile);
     if(weightfile){
@@ -266,7 +266,7 @@ void validate_yolo_recall(char *cfgfile, char *weightfile, char *val_images, cha
     int m = plist->size;
     int i=0;
 
-    float thresh = .001;
+    float thresh = th;
     float iou_thresh = .5;
     float nms = 0;
 
@@ -311,11 +311,17 @@ void validate_yolo_recall(char *cfgfile, char *weightfile, char *val_images, cha
                 ++correct;
             }
         }
-
-        fprintf(stderr, "%5d %5d %5d\tRPs/Img: %.2f\tIOU: %.2f%%\tRecall:%.2f%%\n", i, correct, total, (float)proposals/(i+1), avg_iou*100/total, 100.*correct/total);
+        printf("\033[2J");
+        printf("\033[1;1H");
+        printf("#img\tPred\tTP\ttot\tRPs/Img\tAvg-IOU\tRecall\tPrecision\n");
+        printf("%5d\t%5d\t%5d\t%5d\t%.2f\t%.2f%%\t%.2f%%\t%.2f%%\n", i, proposals, correct, total, (float)proposals/(i+1), avg_iou*100/total, 100.*correct/total, 100.*correct/proposals);
         free(id);
         free_image(orig);
         free_image(sized);
+    }
+    for(j = 0; j < classes; ++j){
+        fprintf(fps[j],"Pred\tTP\ttot\tAvg-IOU\tRecall\tPrecision\n");
+        fprintf(fps[j],"%5d\t%5d\t%5d\t%.2f%%\t%.2f%%\t%.2f%%\n", proposals, correct, total, avg_iou*100/total, 100.*correct/total, 100.*correct/proposals);
     }
 }
 
@@ -420,7 +426,7 @@ void run_yolo(int argc, char **argv)
             char *val_images_txt = argv[4];
             char *out_directory = argv[5];
             weights = argv[6];
-            validate_yolo_recall(cfg, weights, val_images_txt, out_directory);
+            validate_yolo_recall(cfg, weights, val_images_txt, out_directory, thresh);
         } else {
             fprintf(stderr, "usage: %s %s [recall] [cfg] [val_images_txt] [out_directory] [weights (optional)]\n", argv[0], argv[1]);
             return;
