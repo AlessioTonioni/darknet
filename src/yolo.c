@@ -97,7 +97,7 @@ void convert_detections(float *predictions, int classes, int num, int square, in
     int i,j,n;
     //int per_cell = 5*num+classes;
     for (i = 0; i < rows*cols; ++i){
-        int row = i / rows;
+        int row = i / cols;
         int col = i % cols;
         for(n = 0; n < num; ++n){
             int index = i*num + n;
@@ -141,7 +141,7 @@ void print_yolo_detections(FILE **fps, char *id, box *boxes, float **probs, int 
     }
 }
 
-void validate_yolo(char *cfgfile, char *weightfile)
+void validate_yolo(char *cfgfile, char *weightfile, char *val_images, char *result_dir)
 {
     network net = parse_network_cfg(cfgfile);
     if(weightfile){
@@ -151,10 +151,8 @@ void validate_yolo(char *cfgfile, char *weightfile)
     fprintf(stderr, "Learning Rate: %g, Momentum: %g, Decay: %g\n", net.learning_rate, net.momentum, net.decay);
     srand(time(0));
 
-    char *base = "results/comp4_det_test_";
-    //list *plist = get_paths("data/voc.2007.test");
-    list *plist = get_paths("/home/pjreddie/data/voc/2007_test.txt");
-    //list *plist = get_paths("data/voc.2012.test");
+    char *base = result_dir;
+    list *plist = get_paths(val_images);
     char **paths = (char **)list_to_array(plist);
 
     layer l = net.layers[net.n-1];
@@ -233,7 +231,7 @@ void validate_yolo(char *cfgfile, char *weightfile)
     fprintf(stderr, "Total Detection Time: %f Seconds\n", (double)(time(0) - start));
 }
 
-void validate_yolo_recall(char *cfgfile, char *weightfile)
+void validate_yolo_recall(char *cfgfile, char *weightfile, char *val_images, char *out_dir)
 {
     network net = parse_network_cfg(cfgfile);
     if(weightfile){
@@ -243,8 +241,8 @@ void validate_yolo_recall(char *cfgfile, char *weightfile)
     fprintf(stderr, "Learning Rate: %g, Momentum: %g, Decay: %g\n", net.learning_rate, net.momentum, net.decay);
     srand(time(0));
 
-    char *base = "results/comp4_det_test_";
-    list *plist = get_paths("data/voc.2007.test");
+    char *base = out_dir;
+    list *plist = get_paths(val_images);
     char **paths = (char **)list_to_array(plist);
 
     layer l = net.layers[net.n-1];
@@ -406,7 +404,27 @@ void run_yolo(int argc, char **argv)
             return;
         }
     }
-    else if(0==strcmp(argv[2], "valid")) validate_yolo(cfg, weights);
-    else if(0==strcmp(argv[2], "recall")) validate_yolo_recall(cfg, weights);
+    else if(0==strcmp(argv[2], "valid")){ 
+        if(argc>6){
+            char *val_images_txt = argv[4];
+            char *out_directory = argv[5];
+            weights = argv[6];
+            validate_yolo(cfg, weights,val_images_txt,out_directory);
+        } else {
+            fprintf(stderr, "usage: %s %s [valid] [cfg] [val_images_txt] [out_directory] [weights (optional)]\n", argv[0], argv[1]);
+            return;
+        }
+    }
+    else if(0==strcmp(argv[2], "recall")){
+        if(argc>6){
+            char *val_images_txt = argv[4];
+            char *out_directory = argv[5];
+            weights = argv[6];
+            validate_yolo_recall(cfg, weights, val_images_txt, out_directory);
+        } else {
+            fprintf(stderr, "usage: %s %s [recall] [cfg] [val_images_txt] [out_directory] [weights (optional)]\n", argv[0], argv[1]);
+            return;
+        }
+    }
     else if(0==strcmp(argv[2], "demo")) demo(cfg, weights, thresh, cam_index, filename, voc_names, voc_labels, CLASSNUM, frame_skip, save_video);
 }
