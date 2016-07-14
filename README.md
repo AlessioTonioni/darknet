@@ -9,3 +9,4 @@ For questions or issues please use the [Google Group](https://groups.google.com/
 
 #About This Fork#
 This Fork allows to have an asymmetric grid in the final detection layer of yolo.
+Plus added some utility options like: saving output of yolo demo to file and passing training directory from command line.
