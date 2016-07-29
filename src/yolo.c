@@ -5,6 +5,9 @@
 #include "parser.h"
 #include "box.h"
 #include "demo.h"
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #ifdef OPENCV
 #include "opencv2/highgui/highgui_c.h"
@@ -151,6 +154,13 @@ void validate_yolo(char *cfgfile, char *weightfile, char *val_images, char *resu
     fprintf(stderr, "Learning Rate: %g, Momentum: %g, Decay: %g\n", net.learning_rate, net.momentum, net.decay);
     srand(time(0));
 
+    //create output directory if it does not exist
+    struct stat st= {0};
+    if(stat(result_dir,&st)==-1){
+        fprintf(stderr,"Creating output directory\n");
+        mkdir(result_dir,0700);
+    }
+
     char *base = result_dir;
     list *plist = get_paths(val_images);
     char **paths = (char **)list_to_array(plist);
@@ -241,6 +251,13 @@ void validate_yolo_recall(char *cfgfile, char *weightfile, char *val_images, cha
     fprintf(stderr, "Learning Rate: %g, Momentum: %g, Decay: %g\n", net.learning_rate, net.momentum, net.decay);
     srand(time(0));
 
+    //create output directory if it does not exist
+    struct stat st= {0};
+    if(stat(out_dir,&st)==-1){
+        fprintf(stderr,"Creating output directory\n");
+        mkdir(out_dir,0700);
+    }
+
     char *base = out_dir;
     list *plist = get_paths(val_images);
     char **paths = (char **)list_to_array(plist);
@@ -267,11 +284,11 @@ void validate_yolo_recall(char *cfgfile, char *weightfile, char *val_images, cha
     int i=0;
 
     float thresh = th;
-    float iou_thresh = .5;
+    float iou_thresh[11] = {0.0,0.05,0.1,0.15,0.20,0.25,0.30,0.35,0.40,0.45,0.5};
     float nms = 0;
 
     int total = 0;
-    int correct = 0;
+    int correct[11] = {0,0,0,0,0,0,0,0,0,0,0};
     int proposals = 0;
     float avg_iou = 0;
 
@@ -307,21 +324,31 @@ void validate_yolo_recall(char *cfgfile, char *weightfile, char *val_images, cha
                 }
             }
             avg_iou += best_iou;
-            if(best_iou > iou_thresh){
-                ++correct;
+            for(int k=0; k<11; k++){
+                if(best_iou > iou_thresh[k]){
+                    ++correct[k];
+                }
             }
         }
-        printf("\033[2J");
-        printf("\033[1;1H");
-        printf("#img\tPred\tTP\ttot\tRPs/Img\tAvg-IOU\tRecall\tPrecision\n");
-        printf("%5d\t%5d\t%5d\t%5d\t%.2f\t%.2f%%\t%.2f%%\t%.2f%%\n", i, proposals, correct, total, (float)proposals/(i+1), avg_iou*100/total, 100.*correct/total, 100.*correct/proposals);
+        if(i%10==0){
+            printf("\033[2J");
+            printf("\033[1;1H");
+            printf("#img\tPred\tTP\ttot\tRPs/Img\tAvg-IOU\tRecall\tPrecision\n");
+            printf("%5d\t%5d\t%5d\t%5d\t%.2f\t%.2f%%\t%.2f%%\t%.2f%%\n", i, proposals, correct[10], total, (float)proposals/(i+1), avg_iou*100/total, 100.*correct[10]/total, 100.*correct[10]/proposals);
+            printf("IOU_th\tTP\tFP\tRecall\tPrecision\n");
+            for(int k=0; k<11; k++){
+                printf("%.2f%%\t%5d\t%5d\t%.2f%%\t%.2f%%\t\n", iou_thresh[k], correct[k], proposals-correct[k], 100.*correct[k]/total, 100.*correct[k]/proposals);
+            }
+        }
         free(id);
         free_image(orig);
         free_image(sized);
     }
     for(j = 0; j < classes; ++j){
-        fprintf(fps[j],"Pred\tTP\ttot\tAvg-IOU\tRecall\tPrecision\n");
-        fprintf(fps[j],"%5d\t%5d\t%5d\t%.2f%%\t%.2f%%\t%.2f%%\n", proposals, correct, total, avg_iou*100/total, 100.*correct/total, 100.*correct/proposals);
+        fprintf(fps[j],"IOU_th;TP;FP;Recall;Precision");
+        for(int k=0; k<11; k++){
+            fprintf(fps[j],"%.2f%%;%5d;%5d;%.2f%%;%.2f%%;\n", iou_thresh[k], correct[k], proposals-correct[k], 100.*correct[k]/total, 100.*correct[k]/proposals);
+        }
     }
 }
 
