@@ -345,7 +345,7 @@ void validate_yolo_recall(char *cfgfile, char *weightfile, char *val_images, cha
         free_image(sized);
     }
     for(j = 0; j < classes; ++j){
-        fprintf(fps[j],"IOU_th;TP;FP;Recall;Precision");
+        fprintf(fps[j],"IOU_th;TP;FP;Recall;Precision\n");
         for(int k=0; k<11; k++){
             fprintf(fps[j],"%.2f%%;%5d;%5d;%.2f%%;%.2f%%;\n", iou_thresh[k], correct[k], proposals-correct[k], 100.*correct[k]/total, 100.*correct[k]/proposals);
         }
