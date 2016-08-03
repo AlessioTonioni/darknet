@@ -8,5 +8,9 @@ For more information see the [Darknet project website](http://pjreddie.com/darkn
 For questions or issues please use the [Google Group](https://groups.google.com/forum/#!forum/darknet).
 
 #About This Fork#
-This Fork allows to have an asymmetric grid in the final detection layer of yolo.
-Plus added some utility options like: saving output of yolo demo to file and passing training directory from command line.
+This Fork allows to:
+- have an asymmetric grid in the final detection layer of yolo.
+- saving output of yolo demo to file. 
+- passing training directory from command line.
+- improved yolo recall test code.
+- added yolo support for 4 channels png image.
