@@ -952,6 +952,7 @@ image load_image_cv(char *filename, int channels)
     if (channels == 0) flag = -1;
     else if (channels == 1) flag = 0;
     else if (channels == 3) flag = 1;
+    else if (channels == 4) flag = CV_LOAD_IMAGE_UNCHANGED;
     else {
         fprintf(stderr, "OpenCV can't force load with %d channels\n", channels);
     }

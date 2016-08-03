@@ -437,7 +437,7 @@ void free_data(data d)
     }
 }
 
-data load_data_region(int n, char **paths, int m, int w, int h, int rows, int cols, int classes, float jitter)
+data load_data_region(int n, char **paths, int m, int w, int h, int c, int rows, int cols, int classes, float jitter)
 {
     //cercare size
     char **random_paths = get_random_paths(paths, n, m);
@@ -447,13 +447,13 @@ data load_data_region(int n, char **paths, int m, int w, int h, int rows, int co
 
     d.X.rows = n;
     d.X.vals = calloc(d.X.rows, sizeof(float*));
-    d.X.cols = h*w*3;
+    d.X.cols = h*w*c;
 
 
     int k = rows*cols*(5+classes);
     d.y = make_matrix(n, k);
     for(i = 0; i < n; ++i){
-        image orig = load_image_color(random_paths[i], 0, 0);
+        image orig = load_image(random_paths[i], 0, 0, c);
 
         int oh = orig.h;
         int ow = orig.w;
@@ -677,7 +677,7 @@ void *load_thread(void *ptr)
     } else if (a.type == WRITING_DATA){
         *a.d = load_data_writing(a.paths, a.n, a.m, a.w, a.h, a.out_w, a.out_h);
     } else if (a.type == REGION_DATA){
-        *a.d = load_data_region(a.n, a.paths, a.m, a.w, a.h, a.num_rows, a.num_cols, a.classes, a.jitter);
+        *a.d = load_data_region(a.n, a.paths, a.m, a.w, a.h, a.channels, a.num_rows, a.num_cols, a.classes, a.jitter);
     } else if (a.type == DETECTION_DATA){
         *a.d = load_data_detection(a.n, a.paths, a.m, a.w, a.h, a.num_boxes, a.classes, a.jitter);
     } else if (a.type == SWAG_DATA){
