@@ -234,6 +234,8 @@ void fill_truth_region(char *path, float *truth, int classes, int num_rows, int 
     labelpath = find_replace(labelpath, ".jpg", ".txt");
     labelpath = find_replace(labelpath, ".JPG", ".txt");
     labelpath = find_replace(labelpath, ".JPEG", ".txt");
+    labelpath = find_replace(labelpath, ".png", ".txt");
+    labelpath = find_replace(labelpath, ".PNG", ".txt");
     int count = 0;
     box_label *boxes = read_boxes(labelpath, &count);
     randomize_boxes(boxes, count);
@@ -439,7 +441,6 @@ void free_data(data d)
 
 data load_data_region(int n, char **paths, int m, int w, int h, int c, int rows, int cols, int classes, float jitter)
 {
-    //cercare size
     char **random_paths = get_random_paths(paths, n, m);
     int i;
     data d = {0};

@@ -9,6 +9,11 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
+#ifdef OPENCV
+#include "opencv2/highgui/highgui_c.h"
+#include "opencv2/imgproc/imgproc_c.h"
+#endif
+
 int windows = 0;
 
 float colors[6][3] = { {1,0,1}, {0,0,1},{0,1,1},{0,1,0},{1,1,0},{1,0,0} };
@@ -949,9 +954,9 @@ image load_image_cv(char *filename, int channels)
 {
     IplImage* src = 0;
     int flag = -1;
-    if (channels == 0) flag = -1;
-    else if (channels == 1) flag = 0;
-    else if (channels == 3) flag = 1;
+    if (channels == 0) flag = CV_LOAD_IMAGE_UNCHANGED;
+    else if (channels == 1) flag = CV_LOAD_IMAGE_GRAYSCALE;
+    else if (channels == 3) flag = CV_LOAD_IMAGE_COLOR;
     else if (channels == 4) flag = CV_LOAD_IMAGE_UNCHANGED;
     else {
         fprintf(stderr, "OpenCV can't force load with %d channels\n", channels);
@@ -966,6 +971,7 @@ image load_image_cv(char *filename, int channels)
         return make_image(10,10,3);
         //exit(0);
     }
+
     image out = ipl_to_image(src);
     cvReleaseImage(&src);
     rgbgr_image(out);
