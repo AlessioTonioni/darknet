@@ -117,6 +117,7 @@ void convert_detections(float *predictions, int classes, int num, int square, in
 				float prob = scale*predictions[class_index+j];
 				probs[index][j] = (prob > thresh) ? prob : 0;
 			}
+			
 			if(only_objectness){
 				probs[index][0] = scale;
 			}
@@ -292,20 +293,24 @@ void validate_yolo_recall(char *cfgfile, char *weightfile, char *val_images, cha
 	int correct[11] = {0,0,0,0,0,0,0,0,0,0,0};
 	int proposals = 0;
 	float avg_iou = 0;
+	Vector id_found;
+	initArray(&id_found,1);
 
 	for(i = 0; i < m; ++i){
 		char *path = paths[i];
-		image orig = load_image_color(path, 0, 0);
+		image orig = load_image(path, 0, 0,net.c);
 		image sized = resize_image(orig, net.w, net.h);
 		char *id = basecfg(path);
 		float *predictions = network_predict(net, sized.data);
-		convert_detections(predictions, classes, l.n, square, rows, cols, 1, 1, thresh, probs, boxes, 1);
+		convert_detections(predictions, classes, l.n, square, rows, cols, 1, 1, thresh, probs, boxes, 0);
 		if (nms) do_nms(boxes, probs, rows*cols*l.n, 1, nms);
 
 		char *labelpath = find_replace(path, "images", "labels");
 		labelpath = find_replace(labelpath, "JPEGImages", "labels");
 		labelpath = find_replace(labelpath, ".jpg", ".txt");
 		labelpath = find_replace(labelpath, ".JPEG", ".txt");
+		labelpath = find_replace(labelpath, ".png", ".txt");
+		labelpath = find_replace(labelpath, ".PNG", ".txt");
 
 		int num_labels = 0;
 		box_label *truth = read_boxes(labelpath, &num_labels);
@@ -316,17 +321,32 @@ void validate_yolo_recall(char *cfgfile, char *weightfile, char *val_images, cha
 		}
 		for (j = 0; j < num_labels; ++j) {
 			++total;
+			while(id_found.used < truth[j].id)
+				insertArray(&id_found,0);
 			box t = {truth[j].x, truth[j].y, truth[j].w, truth[j].h};
 			float best_iou = 0;
 			for(k = 0; k < rows*cols*l.n; ++k){
 				float iou = box_iou(boxes[k], t);
-				if(probs[k][0] > thresh && iou > best_iou){
-					best_iou = iou;
+				//find overlapping prediction
+				if(iou > best_iou){
+					//find the predicted class
+					float best_score = thresh;
+					int best_class_index = -1;
+					for(int c=0; c<CLASSNUM; c++){
+						if(probs[k][c]>best_score){
+							best_score = probs[k][c];
+							best_class_index = c;
+						}
+					}
+					//check if it's good or not
+					if(best_class_index == truth[j].classe)
+						best_iou = iou;
 				}
 			}
 			avg_iou += best_iou;
 			for(int k=0; k<11; k++){
 				if(best_iou > iou_thresh[k]){
+					id_found.array[truth[j].id]=1;
 					++correct[k];
 				}
 			}
@@ -340,6 +360,10 @@ void validate_yolo_recall(char *cfgfile, char *weightfile, char *val_images, cha
 			for(int k=0; k<11; k++){
 				printf("%.2f%%\t%5d\t%5d\t%.2f%%\t%.2f%%\t\n", iou_thresh[k], correct[k], proposals-correct[k], 100.*correct[k]/total, 100.*correct[k]/proposals);
 			}
+			int found=0;
+			for(int i=0; i<=id_found.used; i++)
+				found+=id_found.array[i];
+			printf("Founded: %d/%d\n", found, id_found.used+1);
 		}
 		free(id);
 		free_image(orig);
@@ -350,7 +374,13 @@ void validate_yolo_recall(char *cfgfile, char *weightfile, char *val_images, cha
 		for(int k=0; k<11; k++){
 			fprintf(fps[j],"%.2f%%;%5d;%5d;%.2f%%;%.2f%%;\n", iou_thresh[k], correct[k], proposals-correct[k], 100.*correct[k]/total, 100.*correct[k]/proposals);
 		}
+		fprintf(fps[j], "\n\nFounded;Total;\n");
+		int found=0;
+		for(int i=0; i<=id_found.used; i++)
+			found+=id_found.array[i];
+		fprintf(fps[j], "%d;%d;\n", found, id_found.used);
 	}
+	freeArray(&id_found);
 }
 
 void test_yolo(char *cfgfile, char *weightfile, char *filename, float thresh)
@@ -381,7 +411,7 @@ void test_yolo(char *cfgfile, char *weightfile, char *filename, float thresh)
 			if(!input) return;
 			strtok(input, "\n");
 		}
-		image im = load_image_color(input,0,0);
+		image im = load_image(input,0,0,net.c);
 		image sized = resize_image(im, net.w, net.h);
 		float *X = sized.data;
 		time=clock();
@@ -390,7 +420,7 @@ void test_yolo(char *cfgfile, char *weightfile, char *filename, float thresh)
 		convert_detections(predictions, l.classes, l.n, l.sqrt, l.rows, l.cols, 1, 1, thresh, probs, boxes, 0);
 		if (nms) do_nms_sort(boxes, probs, l.rows*l.cols*l.n, l.classes, nms);
 		//draw_detections(im, l.side*l.side*l.n, thresh, boxes, probs, voc_names, voc_labels, 20);
-		draw_detections(im, l.rows*l.cols*l.n, thresh, boxes, probs, voc_names, voc_labels, 20);
+		draw_detections(im, l.rows*l.cols*l.n, thresh, boxes, probs, voc_names, voc_labels, CLASSNUM);
 		save_image(im, "predictions");
 		show_image(im, "predictions");
 

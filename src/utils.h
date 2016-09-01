@@ -6,6 +6,16 @@
 
 #define SECRET_NUM -1234
 
+typedef struct {
+  int *array;
+  size_t used;
+  size_t size;
+} Vector;
+
+void initArray(Vector *a, size_t initialSize);
+void insertArray(Vector *a, int element);
+void freeArray(Vector *a);
+
 void shuffle(void *arr, size_t n, size_t size);
 void sorta_shuffle(void *arr, size_t n, size_t size, size_t sections);
 void free_ptrs(void **ptrs, int n);

@@ -60,6 +60,7 @@ typedef struct load_args{
 } load_args;
 
 typedef struct{
+    int classe;
     int id;
     float x,y,w,h;
     float left, right, top, bottom;

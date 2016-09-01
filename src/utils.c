@@ -9,6 +9,27 @@
 
 #include "utils.h"
 
+
+void initArray(Vector *a, size_t initialSize) {
+  a->array = (int *)malloc(initialSize * sizeof(int));
+  a->used = 0;
+  a->size = initialSize;
+}
+
+void insertArray(Vector *a, int element) {
+  if (a->used == a->size) {
+    a->size *= 2;
+    a->array = (int *)realloc(a->array, a->size * sizeof(int));
+  }
+  a->array[a->used++] = element;
+}
+
+void freeArray(Vector *a) {
+  free(a->array);
+  a->array = NULL;
+  a->used = a->size = 0;
+}
+
 void sorta_shuffle(void *arr, size_t n, size_t size, size_t sections)
 {
     size_t i;

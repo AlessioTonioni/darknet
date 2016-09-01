@@ -127,11 +127,12 @@ box_label *read_boxes(char *filename, int *n)
     FILE *file = fopen(filename, "r");
     if(!file) file_error(filename);
     float x, y, h, w;
-    int id;
+    int class,id;
     int count = 0;
-    while(fscanf(file, "%d %f %f %f %f", &id, &x, &y, &w, &h) == 5){
+    while(fscanf(file, "%d %f %f %f %f %d", &class, &x, &y, &w, &h, &id) == 6){
         boxes = realloc(boxes, (count+1)*sizeof(box_label));
         boxes[count].id = id;
+        boxes[count].classe=class;
         boxes[count].x = x;
         boxes[count].y = y;
         boxes[count].h = h;
@@ -209,7 +210,7 @@ void fill_truth_swag(char *path, float *truth, int classes, int flip, float dx, 
         y =  boxes[i].y;
         w =  boxes[i].w;
         h =  boxes[i].h;
-        id = boxes[i].id;
+        id = boxes[i].classe;
 
         if (w < .0 || h < .0) continue;
 
@@ -249,7 +250,7 @@ void fill_truth_region(char *path, float *truth, int classes, int num_rows, int 
         y =  boxes[i].y;
         w =  boxes[i].w;
         h =  boxes[i].h;
-        id = boxes[i].id;
+        id = boxes[i].classe;
 
         if (w < .01 || h < .01) continue;
 
@@ -299,7 +300,7 @@ void fill_truth_detection(char *path, int num_boxes, float *truth, int classes, 
         y =  boxes[i].y;
         w =  boxes[i].w;
         h =  boxes[i].h;
-        id = boxes[i].id;
+        id = boxes[i].classe;
 
         if (w < .01 || h < .01) continue;
 
