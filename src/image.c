@@ -952,29 +952,49 @@ IplImage* image_to_Ipl(image img, int w, int h, int depth, int c, int step)
 
 image load_image_cv(char *filename, int channels)
 {
-    IplImage* src = 0;
     int flag = -1;
+    IplImage* src = 0;
     if (channels == 0) flag = CV_LOAD_IMAGE_UNCHANGED;
     else if (channels == 1) flag = CV_LOAD_IMAGE_GRAYSCALE;
     else if (channels == 3) flag = CV_LOAD_IMAGE_COLOR;
     else if (channels == 4) flag = CV_LOAD_IMAGE_UNCHANGED;
+    else if (channels == 6) flag = CV_LOAD_IMAGE_UNCHANGED;
     else {
         fprintf(stderr, "OpenCV can't force load with %d channels\n", channels);
     }
 
-    if( (src = cvLoadImage(filename, flag)) == 0 )
-    {
-        fprintf(stderr, "Cannot load image \"%s\"\n", filename);
-        char buff[256];
-        sprintf(buff, "echo %s >> bad.list", filename);
-        system(buff);
-        return make_image(10,10,3);
-        //exit(0);
+    if(channels != 6){
+        if( (src = cvLoadImage(filename, flag)) == 0 )
+        {
+            fprintf(stderr, "Cannot load image \"%s\"\n", filename);
+            char buff[256];
+            sprintf(buff, "echo %s >> bad.list", filename);
+            system(buff);
+            return make_image(10,10,3);
+            //exit(0);
+        }
+    } else {
+        //Load left and right rectified image and overlap them as a 6 channels input
+        char * left_img = strtok(filename,";");
+        char * right_img = strtok(NULL,";");
+        IplImage * rightSrc = 0;
+        IplImage * leftSrc = 0;
+        if((leftSrc = cvLoadImage(left_img,flag))==0 && (rightSrc = cvLoadImage(right_img,flag))==0){
+           fprintf(stderr, "Cannot load image \"%s\"\n", left_img);
+            char buff[256];
+            sprintf(buff, "echo %s >> bad.list", filename);
+            system(buff);
+            return make_image(10,10,6);
+            //exit(0); 
+        }
+        cvMerge(rightSrc,leftSrc,NULL,NULL,src);
+        cvReleaseImage(leftSrc);
+        cvReleaseImage(rightSrc);
     }
-
     image out = ipl_to_image(src);
     cvReleaseImage(&src);
-    rgbgr_image(out);
+    if(channels==3)
+        rgbgr_image(out);
     return out;
 }
 

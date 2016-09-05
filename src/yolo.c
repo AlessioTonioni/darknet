@@ -458,7 +458,7 @@ void run_yolo(int argc, char **argv)
 	char *filename = (argc > 5) ? argv[5]: 0;
 	if(0==strcmp(argv[2], "test")) test_yolo(cfg, weights, filename, thresh);
 	else if(0==strcmp(argv[2], "train")){
-		if(argc>6){
+		if(argc>5){
 			char *train_images_txt = argv[4];
 			char *backup_directory = argv[5];
 			weights = argv[6];
