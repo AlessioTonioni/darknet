@@ -294,26 +294,21 @@ void validate_yolo_recall(char *cfgfile, char *weightfile, char *val_images, cha
 	int proposals = 0;
 	float avg_iou = 0;
 	Vector id_found;
-	initArray(&id_found,1);
+	initArray(&id_found,5);
 
 	for(i = 0; i < m; ++i){
-		char *path = paths[i];
-		image orig = load_image(path, 0, 0,net.c);
+		char * image_path = strtok(paths[i]," ");
+        char * label_path = strtok(NULL," ");
+
+		image orig = load_image(image_path, 0, 0,net.c);
 		image sized = resize_image(orig, net.w, net.h);
-		char *id = basecfg(path);
+		//char *id = basecfg(path);
 		float *predictions = network_predict(net, sized.data);
 		convert_detections(predictions, classes, l.n, square, rows, cols, 1, 1, thresh, probs, boxes, 0);
 		if (nms) do_nms(boxes, probs, rows*cols*l.n, 1, nms);
 
-		char *labelpath = find_replace(path, "images", "labels");
-		labelpath = find_replace(labelpath, "JPEGImages", "labels");
-		labelpath = find_replace(labelpath, ".jpg", ".txt");
-		labelpath = find_replace(labelpath, ".JPEG", ".txt");
-		labelpath = find_replace(labelpath, ".png", ".txt");
-		labelpath = find_replace(labelpath, ".PNG", ".txt");
-
 		int num_labels = 0;
-		box_label *truth = read_boxes(labelpath, &num_labels);
+		box_label *truth = read_boxes(label_path, &num_labels);
 		for(k = 0; k < rows*cols*l.n; ++k){
 			if(probs[k][0] > thresh){
 				++proposals;
@@ -321,8 +316,9 @@ void validate_yolo_recall(char *cfgfile, char *weightfile, char *val_images, cha
 		}
 		for (j = 0; j < num_labels; ++j) {
 			++total;
-			while(id_found.used < truth[j].id)
+			while(id_found.used <= truth[j].id){
 				insertArray(&id_found,0);
+			}
 			box t = {truth[j].x, truth[j].y, truth[j].w, truth[j].h};
 			float best_iou = 0;
 			for(k = 0; k < rows*cols*l.n; ++k){
@@ -361,11 +357,11 @@ void validate_yolo_recall(char *cfgfile, char *weightfile, char *val_images, cha
 				printf("%.2f%%\t%5d\t%5d\t%.2f%%\t%.2f%%\t\n", iou_thresh[k], correct[k], proposals-correct[k], 100.*correct[k]/total, 100.*correct[k]/proposals);
 			}
 			int found=0;
-			for(int i=0; i<=id_found.used; i++)
+			for(int i=0; i<id_found.used; i++)
 				found+=id_found.array[i];
 			printf("Founded: %d/%d\n", found, id_found.used+1);
 		}
-		free(id);
+		//free(id);
 		free_image(orig);
 		free_image(sized);
 	}
@@ -376,7 +372,7 @@ void validate_yolo_recall(char *cfgfile, char *weightfile, char *val_images, cha
 		}
 		fprintf(fps[j], "\n\nFounded;Total;\n");
 		int found=0;
-		for(int i=0; i<=id_found.used; i++)
+		for(int i=0; i<id_found.used; i++)
 			found+=id_found.array[i];
 		fprintf(fps[j], "%d;%d;\n", found, id_found.used);
 	}

@@ -123,9 +123,14 @@ matrix load_image_cropped_paths(char **paths, int n, int min, int max, int size)
 
 box_label *read_boxes(char *filename, int *n)
 {
+
     box_label *boxes = calloc(1, sizeof(box_label));
     FILE *file = fopen(filename, "r");
-    if(!file) file_error(filename);
+    if(file == NULL){ 
+        *n=0;
+        return boxes;
+        //file_error(filename);
+    }
     float x, y, h, w;
     int class,id;
     int count = 0;
@@ -229,14 +234,16 @@ void fill_truth_swag(char *path, float *truth, int classes, int flip, float dx, 
 void fill_truth_region(char *path, float *truth, int classes, int num_rows, int num_cols, int flip, float dx, float dy, float sx, float sy)
 {
     //ex parametere to find num_boxes
-    char *labelpath = find_replace(path, "images", "labels");
-    labelpath = find_replace(labelpath, "JPEGImages", "labels");
+    char *labelpath = path;
+    //char *labelpath = find_replace(path, "images", "labels");
+    //labelpath = find_replace(labelpath, "left", "labels");
+    //labelpath = find_replace(labelpath, "JPEGImages", "labels");
 
-    labelpath = find_replace(labelpath, ".jpg", ".txt");
-    labelpath = find_replace(labelpath, ".JPG", ".txt");
-    labelpath = find_replace(labelpath, ".JPEG", ".txt");
-    labelpath = find_replace(labelpath, ".png", ".txt");
-    labelpath = find_replace(labelpath, ".PNG", ".txt");
+    //labelpath = find_replace(labelpath, ".jpg", ".txt");
+    //labelpath = find_replace(labelpath, ".JPG", ".txt");
+    //labelpath = find_replace(labelpath, ".JPEG", ".txt");
+    //labelpath = find_replace(labelpath, ".png", ".txt");
+    //labelpath = find_replace(labelpath, ".PNG", ".txt");
     int count = 0;
     box_label *boxes = read_boxes(labelpath, &count);
     randomize_boxes(boxes, count);
@@ -264,16 +271,20 @@ void fill_truth_region(char *path, float *truth, int classes, int num_rows, int 
         int index = (col+row*num_cols)*(5+classes);
         //end of modified part
 
-        if (truth[index]) continue;
+        if (truth[index]) 
+            continue;
         truth[index++] = 1;
 
-        if (id < classes) truth[index+id] = 1;
-        index += classes;
+        //discard boxes for classes > max number class
+        if (id < classes){ 
+            truth[index+id] = 1;
+            index += classes;
 
-        truth[index++] = x;
-        truth[index++] = y;
-        truth[index++] = w;
-        truth[index++] = h;
+            truth[index++] = x;
+            truth[index++] = y;
+            truth[index++] = w;
+            truth[index++] = h;
+        } 
     }
     free(boxes);
 }
@@ -455,7 +466,10 @@ data load_data_region(int n, char **paths, int m, int w, int h, int c, int rows,
     int k = rows*cols*(5+classes);
     d.y = make_matrix(n, k);
     for(i = 0; i < n; ++i){
-        image orig = load_image(random_paths[i], 0, 0, c);
+        char * image_path = strtok(random_paths[i]," ");
+        char * label_path = strtok(NULL," ");
+
+        image orig = load_image(image_path, 0, 0, c);
 
         int oh = orig.h;
         int ow = orig.w;
@@ -484,7 +498,7 @@ data load_data_region(int n, char **paths, int m, int w, int h, int c, int rows,
         if(flip) flip_image(sized);
         d.X.vals[i] = sized.data;
 
-        fill_truth_region(random_paths[i], d.y.vals[i], classes, rows, cols, flip, dx, dy, 1./sx, 1./sy);
+        fill_truth_region(label_path, d.y.vals[i], classes, rows, cols, flip, dx, dy, 1./sx, 1./sy);
 
         free_image(orig);
         free_image(cropped);
