@@ -16,6 +16,8 @@ list *get_paths(char *filename)
     if(!file) file_error(filename);
     list *lines = make_list();
     while((path=fgetl(file))){
+        if(strlen(path)<200)
+            printf("La morte\n");
         list_insert(lines, path);
     }
     fclose(file);
@@ -30,19 +32,19 @@ char **get_random_paths_indexes(char **paths, int n, int m, int *indexes)
         int index = rand_r(&data_seed)%m;
         indexes[i] = index;
         random_paths[i] = paths[index];
-        if(i == 0) printf("%s\n", paths[index]);
+        //if(i == 0) printf("%s\n", paths[index]);
     }
     return random_paths;
 }
 
 char **get_random_paths(char **paths, int n, int m)
 {
-    char **random_paths = calloc(n, sizeof(char*));
+    char **random_paths = calloc(n,sizeof(char*));
     int i;
     for(i = 0; i < n; ++i){
         int index = rand_r(&data_seed)%m;
         random_paths[i] = paths[index];
-        if(i == 0) printf("%s\n", paths[index]);
+        //if(i == 0) printf("%s\n", paths[index]);
     }
     return random_paths;
 }
@@ -252,6 +254,7 @@ void fill_truth_region(char *path, float *truth, int classes, int num_rows, int 
     int id;
     int i;
 
+    int count_2=0;
     for (i = 0; i < count; ++i) {
         x =  boxes[i].x;
         y =  boxes[i].y;
@@ -271,12 +274,12 @@ void fill_truth_region(char *path, float *truth, int classes, int num_rows, int 
         int index = (col+row*num_cols)*(5+classes);
         //end of modified part
 
-        if (truth[index]) 
+        if (truth[index])
             continue;
-        truth[index++] = 1;
 
         //discard boxes for classes > max number class
         if (id < classes){ 
+            truth[index++] = 1;
             truth[index+id] = 1;
             index += classes;
 
@@ -284,8 +287,17 @@ void fill_truth_region(char *path, float *truth, int classes, int num_rows, int 
             truth[index++] = y;
             truth[index++] = w;
             truth[index++] = h;
+            count_2++;
         } 
     }
+    //printf("%s %d %d\n", labelpath, count, count_2);
+    // for(int i=0; i<num_rows; i++){
+    //     for(int j=0; j<num_cols; j++){
+    //         int index = (j+i*num_cols)*(5+classes)+2;
+    //         printf("%f\t",truth[index]);
+    //     }
+    //     printf("\n");
+    // }
     free(boxes);
 }
 
@@ -368,7 +380,7 @@ data load_data_captcha(char **paths, int n, int m, int k, int w, int h)
 
 data load_data_captcha_encode(char **paths, int n, int m, int w, int h)
 {
-    if(m) paths = get_random_paths(paths, n, m);
+    if(m) paths=get_random_paths(paths, n, m);
     data d = {0};
     d.shallow = 0;
     d.X = load_image_paths(paths, n, w, h);
@@ -462,12 +474,15 @@ data load_data_region(int n, char **paths, int m, int w, int h, int c, int rows,
     d.X.vals = calloc(d.X.rows, sizeof(float*));
     d.X.cols = h*w*c;
 
-
+    //printf("=================================================\n");
     int k = rows*cols*(5+classes);
     d.y = make_matrix(n, k);
     for(i = 0; i < n; ++i){
-        char * image_path = strtok(random_paths[i]," ");
-        char * label_path = strtok(NULL," ");
+        //strtok fucking changes it's input string so we have to copy it
+        char buffer[512];
+        strcpy(buffer,random_paths[i]);
+        char*image_path = strtok(buffer," \n");
+        char*label_path = strtok(NULL,"  \n");        
 
         image orig = load_image(image_path, 0, 0, c);
 
@@ -503,13 +518,14 @@ data load_data_region(int n, char **paths, int m, int w, int h, int c, int rows,
         free_image(orig);
         free_image(cropped);
     }
+    //printf("=================================================\n");
     free(random_paths);
     return d;
 }
 
 data load_data_compare(int n, char **paths, int m, int classes, int w, int h)
 {
-    if(m) paths = get_random_paths(paths, 2*n, m);
+    if(m) paths=get_random_paths(paths, 2*n, m);
     int i,j;
     data d = {0};
     d.shallow = 0;
@@ -722,7 +738,7 @@ pthread_t load_data_in_thread(load_args args)
 
 data load_data_writing(char **paths, int n, int m, int w, int h, int out_w, int out_h)
 {
-    if(m) paths = get_random_paths(paths, n, m);
+    if(m) paths=get_random_paths(paths, n, m);
     char **replace_paths = find_replace_paths(paths, n, ".png", "-label.png");
     data d = {0};
     d.shallow = 0;
@@ -737,7 +753,7 @@ data load_data_writing(char **paths, int n, int m, int w, int h, int out_w, int 
 
 data load_data(char **paths, int n, int m, char **labels, int k, int w, int h)
 {
-    if(m) paths = get_random_paths(paths, n, m);
+    if(m) paths=get_random_paths(paths, n, m);
     data d = {0};
     d.shallow = 0;
     d.X = load_image_paths(paths, n, w, h);
@@ -750,7 +766,7 @@ data load_data_study(char **paths, int n, int m, char **labels, int k, int min, 
 {
     data d = {0};
     d.indexes = calloc(n, sizeof(int));
-    if(m) paths = get_random_paths_indexes(paths, n, m, d.indexes);
+    if(m) paths=get_random_paths_indexes(paths, n, m, d.indexes);
     d.shallow = 0;
     d.X = load_image_cropped_paths(paths, n, min, max, size);
     d.y = load_labels_paths(paths, n, labels, k);
@@ -760,7 +776,7 @@ data load_data_study(char **paths, int n, int m, char **labels, int k, int min, 
 
 data load_data_augment(char **paths, int n, int m, char **labels, int k, int min, int max, int size)
 {
-    if(m) paths = get_random_paths(paths, n, m);
+    if(m) paths=get_random_paths(paths, n, m);
     data d = {0};
     d.shallow = 0;
     d.X = load_image_cropped_paths(paths, n, min, max, size);
@@ -771,7 +787,7 @@ data load_data_augment(char **paths, int n, int m, char **labels, int k, int min
 
 data load_data_tag(char **paths, int n, int m, int k, int min, int max, int size)
 {
-    if(m) paths = get_random_paths(paths, n, m);
+    if(m) paths=get_random_paths(paths, n, m);
     data d = {0};
     d.w = size;
     d.h = size;

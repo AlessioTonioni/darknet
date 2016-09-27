@@ -952,6 +952,7 @@ IplImage* image_to_Ipl(image img, int w, int h, int depth, int c, int step)
 
 image load_image_cv(char *filename, int channels)
 {
+    //printf("Loading: %s\n",filename);
     int flag = -1;
     IplImage* src = 0;
     if (channels == 0) flag = CV_LOAD_IMAGE_UNCHANGED;

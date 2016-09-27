@@ -76,14 +76,15 @@ void train_yolo(char *cfgfile, char *weightfile, char* train_images, char* backu
 		train = buffer;
 		load_thread = load_data_in_thread(args);
 
-		printf("Loaded: %lf seconds\n", sec(clock()-time));
+		//printf("Loaded: %lf seconds\n", sec(clock()-time));
 
 		time=clock();
 		float loss = train_network(net, train);
 		if (avg_loss < 0) avg_loss = loss;
 		avg_loss = avg_loss*.9 + loss*.1;
 
-		printf("%d: %f, %f avg, %f rate, %lf seconds, %d images\n", i, loss, avg_loss, get_current_rate(net), sec(clock()-time), i*imgs);
+		if(i%10==0)
+			printf("%d: %f, %f avg, %f rate, %lf seconds, %d images\n", i, loss, avg_loss, get_current_rate(net), sec(clock()-time), i*imgs);
 		if(i%1000==0 || (i < 1000 && i%500 == 0)){
 			char buff[256];
 			sprintf(buff, "%s/%s_%d.weights", backup_directory, base, i);
@@ -452,7 +453,8 @@ void run_yolo(int argc, char **argv)
 	char *cfg = argv[3];
 	char *weights = (argc > 4) ? argv[4] : 0;
 	char *filename = (argc > 5) ? argv[5]: 0;
-	if(0==strcmp(argv[2], "test")) test_yolo(cfg, weights, filename, thresh);
+	if(0==strcmp(argv[2], "test")) 
+		test_yolo(cfg, weights, filename, thresh);
 	else if(0==strcmp(argv[2], "train")){
 		if(argc>5){
 			char *train_images_txt = argv[4];
@@ -486,5 +488,6 @@ void run_yolo(int argc, char **argv)
 			return;
 		}
 	}
-	else if(0==strcmp(argv[2], "demo")) demo(cfg, weights, thresh, cam_index, filename, voc_names, voc_labels, CLASSNUM, frame_skip, save_video);
+	else if(0==strcmp(argv[2], "demo")) 
+		demo(cfg, weights, thresh, cam_index, filename, voc_names, voc_labels, CLASSNUM, frame_skip, save_video);
 }
