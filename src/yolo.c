@@ -244,7 +244,7 @@ void validate_yolo(char *cfgfile, char *weightfile, char *val_images, char *resu
 	fprintf(stderr, "Total Detection Time: %f Seconds\n", (double)(time(0) - start));
 }
 
-void validate_yolo_recall(char *cfgfile, char *weightfile, char *val_images, char *out_dir, float th)
+void validate_yolo_recall(char *cfgfile, char *weightfile, char *val_images, char *out_dir, float th, int log, int draw)
 {
 	network net = parse_network_cfg(cfgfile);
 	if(weightfile){
@@ -288,7 +288,7 @@ void validate_yolo_recall(char *cfgfile, char *weightfile, char *val_images, cha
 
 	float thresh = th;
 	float iou_thresh[11] = {0.0,0.05,0.1,0.15,0.20,0.25,0.30,0.35,0.40,0.45,0.5};
-	float nms = 0;
+	float nms = 0.1;
 
 	int total = 0;
 	int correct[11] = {0,0,0,0,0,0,0,0,0,0,0};
@@ -308,11 +308,38 @@ void validate_yolo_recall(char *cfgfile, char *weightfile, char *val_images, cha
 		convert_detections(predictions, classes, l.n, square, rows, cols, 1, 1, thresh, probs, boxes, 0);
 		if (nms) do_nms(boxes, probs, rows*cols*l.n, 1, nms);
 
+
+
 		int num_labels = 0;
 		box_label *truth = read_boxes(label_path, &num_labels);
+		int old_p = proposals;
 		for(k = 0; k < rows*cols*l.n; ++k){
 			if(probs[k][0] > thresh){
 				++proposals;
+			}
+		}
+
+		if(log && old_p!=proposals){
+			char filename[256];
+			sprintf(filename, "%s/%d.txt", base,i);
+			printf("log in file %s\n",filename);
+			FILE * out = fopen(filename, "w");
+			fprintf(out,"W\tH\tX\tY\n");
+			for(k=0; k<rows*cols*l.n; ++k){
+				if(probs[k][0] > thresh){
+					fprintf(out, "%f\t%f\t%f\t%f\n",boxes[k].w,boxes[k].h,boxes[k].x,boxes[k].y);
+				}
+			}
+			fclose(out);
+			if(draw){
+				draw_detections(orig, l.rows*l.cols*l.n, thresh, boxes, probs, voc_names, voc_labels, CLASSNUM);
+
+				show_image(orig, "predictions");
+
+				#ifdef OPENCV
+				cvWaitKey(0);
+				//cvDestroyAllWindows();
+				#endif
 			}
 		}
 		for (j = 0; j < num_labels; ++j) {
@@ -376,6 +403,7 @@ void validate_yolo_recall(char *cfgfile, char *weightfile, char *val_images, cha
 		for(int i=0; i<id_found.used; i++)
 			found+=id_found.array[i];
 		fprintf(fps[j], "%d;%d;\n", found, id_found.used);
+		fclose(fps[j]);
 	}
 	freeArray(&id_found);
 }
@@ -482,9 +510,11 @@ void run_yolo(int argc, char **argv)
 			char *val_images_txt = argv[4];
 			char *out_directory = argv[5];
 			weights = argv[6];
-			validate_yolo_recall(cfg, weights, val_images_txt, out_directory, thresh);
+			int log = (argc>7)?strcmp(argv[7],"true")==0:0;
+			int draw = (argc>8)?strcmp(argv[8],"true")==0:0;
+			validate_yolo_recall(cfg, weights, val_images_txt, out_directory, thresh,log,draw);
 		} else {
-			fprintf(stderr, "usage: %s %s [recall] [cfg] [val_images_txt] [out_directory] [weights (optional)]\n", argv[0], argv[1]);
+			fprintf(stderr, "usage: %s %s [recall] [cfg] [val_images_txt] [out_directory] [weights (optional)] [log (true/false)] [draw (true/false)]\n", argv[0], argv[1]);
 			return;
 		}
 	}

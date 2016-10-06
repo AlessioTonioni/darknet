@@ -299,6 +299,7 @@ void rgbgr_image(image im)
 void show_image_cv(image p, const char *name)
 {
     int x,y,k;
+    int p_channels = (p.c<=3)?p.c:3;
     image copy = copy_image(p);
     constrain_image(copy);
     if(p.c == 3) rgbgr_image(copy);
@@ -308,15 +309,16 @@ void show_image_cv(image p, const char *name)
     //sprintf(buff, "%s (%d)", name, windows);
     sprintf(buff, "%s", name);
 
-    IplImage *disp = cvCreateImage(cvSize(p.w,p.h), IPL_DEPTH_8U, p.c);
+
+    IplImage *disp = cvCreateImage(cvSize(p.w,p.h), IPL_DEPTH_8U, p_channels);
     int step = disp->widthStep;
-    cvNamedWindow(buff, CV_WINDOW_NORMAL); 
+    //cvNamedWindow(buff, CV_WINDOW_NORMAL); 
     //cvMoveWindow(buff, 100*(windows%10) + 200*(windows/10), 100*(windows%10));
     ++windows;
     for(y = 0; y < p.h; ++y){
         for(x = 0; x < p.w; ++x){
-            for(k= 0; k < p.c; ++k){
-                disp->imageData[y*step + x*p.c + k] = (unsigned char)(get_pixel(copy,x,y,k)*255);
+            for(k= 0; k < p_channels; ++k){
+                disp->imageData[y*step + x*p_channels + k] = (unsigned char)(get_pixel(copy,x,y,k)*255);
             }
         }
     }
@@ -954,7 +956,6 @@ image load_image_cv(char *filename, int channels)
 {
     //printf("Loading: %s\n",filename);
     int flag = -1;
-    IplImage* src = 0;
     if (channels == 0) flag = CV_LOAD_IMAGE_UNCHANGED;
     else if (channels == 1) flag = CV_LOAD_IMAGE_GRAYSCALE;
     else if (channels == 3) flag = CV_LOAD_IMAGE_COLOR;
@@ -965,6 +966,7 @@ image load_image_cv(char *filename, int channels)
     }
 
     if(channels != 6){
+        IplImage* src = 0;
         if( (src = cvLoadImage(filename, flag)) == 0 )
         {
             fprintf(stderr, "Cannot load image \"%s\"\n", filename);
@@ -974,13 +976,18 @@ image load_image_cv(char *filename, int channels)
             return make_image(10,10,3);
             //exit(0);
         }
+        image out = ipl_to_image(src);
+        cvReleaseImage(&src);
+        if(channels==3)
+            rgbgr_image(out);
+        return out;
     } else {
         //Load left and right rectified image and overlap them as a 6 channels input
         char * left_img = strtok(filename,";");
         char * right_img = strtok(NULL,";");
         IplImage * rightSrc = 0;
         IplImage * leftSrc = 0;
-        if((leftSrc = cvLoadImage(left_img,flag))==0 && (rightSrc = cvLoadImage(right_img,flag))==0){
+        if((leftSrc = cvLoadImage(left_img,flag))==0 || (rightSrc = cvLoadImage(right_img,flag))==0){
            fprintf(stderr, "Cannot load image \"%s\"\n", left_img);
             char buff[256];
             sprintf(buff, "echo %s >> bad.list", filename);
@@ -988,15 +995,35 @@ image load_image_cv(char *filename, int channels)
             return make_image(10,10,6);
             //exit(0); 
         }
-        cvMerge(rightSrc,leftSrc,NULL,NULL,src);
-        cvReleaseImage(leftSrc);
-        cvReleaseImage(rightSrc);
+
+        int h = leftSrc->height;
+        int w = leftSrc->width;
+        int c = leftSrc->nChannels;
+        int step = leftSrc->widthStep;
+
+        //printf("[%d,%d,%d] %d\n",w,h,c,step);
+
+        int i,j,k;
+        unsigned char *RightData = (unsigned char *)rightSrc->imageData;
+        unsigned char *LeftData = (unsigned char *)leftSrc->imageData;
+        image out = make_image(w, h, channels);
+        for(k = 0; k < channels; ++k){
+            for(i = 0; i < h; ++i){
+                for(j = 0; j < w; ++j){
+                    int dst_index = j + w*i + w*h*k;
+                    int src_index = i*step + j*c + (k%c);
+                    if(k<3)
+                        out.data[dst_index] = LeftData[src_index]/255.;
+                    else
+                        out.data[dst_index] = RightData[src_index]/255.;
+                    //printf("%d %d %d %d\n",k,i,j, (k<3));
+                }
+            }
+        }
+        cvReleaseImage(&leftSrc);
+        cvReleaseImage(&rightSrc);
+        return out;
     }
-    image out = ipl_to_image(src);
-    cvReleaseImage(&src);
-    if(channels==3)
-        rgbgr_image(out);
-    return out;
 }
 
 #endif
@@ -1004,26 +1031,59 @@ image load_image_cv(char *filename, int channels)
 
 image load_image_stb(char *filename, int channels)
 {
-    int w, h, c;
-    unsigned char *data = stbi_load(filename, &w, &h, &c, channels);
-    if (!data) {
-        fprintf(stderr, "Cannot load image \"%s\"\nSTB Reason: %s\n", filename, stbi_failure_reason());
-        exit(0);
-    }
-    if(channels) c = channels;
-    int i,j,k;
-    image im = make_image(w, h, c);
-    for(k = 0; k < c; ++k){
-        for(j = 0; j < h; ++j){
-            for(i = 0; i < w; ++i){
-                int dst_index = i + w*j + w*h*k;
-                int src_index = k + c*i + c*w*j;
-                im.data[dst_index] = (float)data[src_index]/255.;
+    if(channels != 6){
+        int w, h, c;
+        unsigned char *data = stbi_load(filename, &w, &h, &c, channels);
+        if (!data) {
+            fprintf(stderr, "Cannot load image \"%s\"\nSTB Reason: %s\n", filename, stbi_failure_reason());
+            exit(0);
+        }
+        if(channels) c = channels;
+        int i,j,k;
+        image im = make_image(w, h, c);
+        for(k = 0; k < c; ++k){
+            for(j = 0; j < h; ++j){
+                for(i = 0; i < w; ++i){
+                    int dst_index = i + w*j + w*h*k;
+                    int src_index = k + c*i + c*w*j;
+                    im.data[dst_index] = (float)data[src_index]/255.;
+                }
             }
         }
+        free(data);
+        return im;
+    } else {
+        char * left_img = strtok(filename,";");
+        char * right_img = strtok(NULL,";");
+
+        //printf("Going to load %s and %s\n", left_img, right_img);
+        int w, h, c;
+        unsigned char *dataLeft = stbi_load(left_img, &w, &h, &c, 3);
+        unsigned char *dataRight = stbi_load(right_img, &w, &h, &c, 3);
+        if (!dataLeft || !dataRight) {
+            fprintf(stderr, "Cannot load image \"%s\" \"%s\"\nSTB Reason: %s\n", left_img,right_img, stbi_failure_reason());
+            exit(0);
+        }
+        //if(channels) c = channels;
+        int i,j,k;
+        image im = make_image(w, h, channels);
+        for(k = 0; k < channels; ++k){
+            for(j = 0; j < h; ++j){
+                for(i = 0; i < w; ++i){
+                    int dst_index = i + w*j + w*h*k;
+                    int src_index = k%3 + c*i + c*w*j;
+                    if(k<3)
+                        im.data[dst_index] = (float)dataLeft[src_index]/255.;
+                    else
+                        im.data[dst_index] = (float)dataRight[src_index]/255.;
+                }
+            }
+        }
+        free(dataLeft);
+        free(dataRight);
+        //printf("%d %d %d\n",im.w, im.h, im.c);
+        return im;
     }
-    free(data);
-    return im;
 }
 
 image load_image(char *filename, int w, int h, int c)
