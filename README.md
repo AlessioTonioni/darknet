@@ -14,3 +14,6 @@ This Fork allows to:
 - passing training directory from command line.
 - improved yolo recall test code.
 - added yolo support for 4 channels png image.
+- test using 2 stacked image on input.
+- improved training list txt
+- improved validation code
