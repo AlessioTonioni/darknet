@@ -319,18 +319,20 @@ void validate_yolo_recall(char *cfgfile, char *weightfile, char *val_images, cha
 			}
 		}
 
-		if(log && old_p!=proposals){
-			char filename[256];
-			sprintf(filename, "%s/%d.txt", base,i);
-			printf("log in file %s\n",filename);
-			FILE * out = fopen(filename, "w");
-			fprintf(out,"W\tH\tX\tY\n");
-			for(k=0; k<rows*cols*l.n; ++k){
-				if(probs[k][0] > thresh){
-					fprintf(out, "%f\t%f\t%f\t%f\n",boxes[k].w,boxes[k].h,boxes[k].x,boxes[k].y);
+		if(old_p!=proposals){
+			if(log){
+				char filename[256];
+				sprintf(filename, "%s/%d.txt", base,i);
+				printf("log in file %s\n",filename);
+				FILE * out = fopen(filename, "w");
+				fprintf(out,"W\tH\tX\tY\n");
+				for(k=0; k<rows*cols*l.n; ++k){
+					if(probs[k][0] > thresh){
+						fprintf(out, "%f\t%f\t%f\t%f\n",boxes[k].w,boxes[k].h,boxes[k].x,boxes[k].y);
+					}
 				}
+				fclose(out);
 			}
-			fclose(out);
 			if(draw){
 				draw_detections(orig, l.rows*l.cols*l.n, thresh, boxes, probs, voc_names, voc_labels, CLASSNUM);
 
@@ -460,6 +462,11 @@ void test_yolo(char *cfgfile, char *weightfile, char *filename, float thresh)
 	}
 }
 
+void debug(char *cfgfile, char *weightfile,float thresh){
+	char * testImage = 
+
+}
+
 void run_yolo(int argc, char **argv)
 {
 	int i;
@@ -510,11 +517,11 @@ void run_yolo(int argc, char **argv)
 			char *val_images_txt = argv[4];
 			char *out_directory = argv[5];
 			weights = argv[6];
-			int log = (argc>7)?strcmp(argv[7],"true")==0:0;
-			int draw = (argc>8)?strcmp(argv[8],"true")==0:0;
+			int log = find_int_arg(argc,argv,"-log",0);
+			int draw = find_int_arg(argc,argv,"-draw",0);
 			validate_yolo_recall(cfg, weights, val_images_txt, out_directory, thresh,log,draw);
 		} else {
-			fprintf(stderr, "usage: %s %s [recall] [cfg] [val_images_txt] [out_directory] [weights (optional)] [log (true/false)] [draw (true/false)]\n", argv[0], argv[1]);
+			fprintf(stderr, "usage: %s %s [recall] [cfg] [val_images_txt] [out_directory] [weights (optional)] [-log (0/1)] [-draw (0/1)]\n", argv[0], argv[1]);
 			return;
 		}
 	}
