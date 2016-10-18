@@ -246,7 +246,7 @@ void validate_yolo(char *cfgfile, char *weightfile, char *val_images, char *resu
 
 void validate_yolo_recall(char *cfgfile, char *weightfile, char *val_images, char *out_dir, float th, int log, int draw)
 {
-	
+
 	network net = parse_network_cfg(cfgfile);
 	if(weightfile){
 		load_weights(&net, weightfile);
@@ -461,11 +461,6 @@ void test_yolo(char *cfgfile, char *weightfile, char *filename, float thresh)
 #endif
 		if (filename) break;
 	}
-}
-
-void debug(char *cfgfile, char *weightfile,float thresh){
-	char * testImage = 
-
 }
 
 void run_yolo(int argc, char **argv)
