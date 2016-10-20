@@ -296,7 +296,9 @@ void validate_yolo_recall(char *cfgfile, char *weightfile, char *val_images, cha
 	int proposals = 0;
 	float avg_iou = 0;
 	Vector id_found;
+	Vector id_invalid;
 	initArray(&id_found,5);
+	initArray(&id_invalid,5);
 
 	for(i = 0; i < m; ++i){
 		char * image_path = strtok(paths[i]," ");
@@ -347,9 +349,15 @@ void validate_yolo_recall(char *cfgfile, char *weightfile, char *val_images, cha
 		}
 		for (j = 0; j < num_labels; ++j) {
 			++total;
+
 			while(id_found.used <= truth[j].id){
+				insertArray(&id_invalid,0);
 				insertArray(&id_found,0);
 			}
+							
+			if(truth[j].classe > CLASSNUM-1)
+				id_invalid.array[truth[j].id]=1;
+
 			box t = {truth[j].x, truth[j].y, truth[j].w, truth[j].h};
 			float best_iou = 0;
 			for(k = 0; k < rows*cols*l.n; ++k){
@@ -388,9 +396,12 @@ void validate_yolo_recall(char *cfgfile, char *weightfile, char *val_images, cha
 				printf("%.2f%%\t%5d\t%5d\t%.2f%%\t%.2f%%\t\n", iou_thresh[k], correct[k], proposals-correct[k], 100.*correct[k]/total, 100.*correct[k]/proposals);
 			}
 			int found=0;
-			for(int i=0; i<id_found.used; i++)
+			int invalid = 0;
+			for(int i=0; i<id_found.used; i++){
 				found+=id_found.array[i];
-			printf("Founded: %d/%d\n", found, id_found.used+1);
+				invalid+=id_invalid.array[i];
+			}
+			printf("Founded: %d/%d\t%d\n", found, id_found.used-invalid,invalid);
 		}
 		//free(id);
 		free_image(orig);
@@ -403,9 +414,12 @@ void validate_yolo_recall(char *cfgfile, char *weightfile, char *val_images, cha
 		}
 		fprintf(fps[j], "\n\nFounded;Total;\n");
 		int found=0;
-		for(int i=0; i<id_found.used; i++)
+		int invalid = 0;
+		for(int i=0; i<id_found.used; i++){
 			found+=id_found.array[i];
-		fprintf(fps[j], "%d;%d;\n", found, id_found.used);
+			invalid+=id_invalid.array[i];
+		}
+		fprintf(fps[j], "%d;%d;\n", found, id_found.used-invalid);
 		fclose(fps[j]);
 	}
 	freeArray(&id_found);
