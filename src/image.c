@@ -299,7 +299,7 @@ void rgbgr_image(image im)
 void show_image_cv(image p, const char *name)
 {
     int x,y,k;
-    int p_channels = (p.c<=3)?p.c:3;
+    int p_channels = (p.c<3)?1:3;
     image copy = copy_image(p);
     constrain_image(copy);
     if(p.c == 3) rgbgr_image(copy);
@@ -958,14 +958,58 @@ image load_image_cv(char *filename, int channels)
     int flag = -1;
     if (channels == 0) flag = CV_LOAD_IMAGE_UNCHANGED;
     else if (channels == 1) flag = CV_LOAD_IMAGE_GRAYSCALE;
+    else if (channels == 2) flag = CV_LOAD_IMAGE_GRAYSCALE;
     else if (channels == 3) flag = CV_LOAD_IMAGE_COLOR;
     else if (channels == 4) flag = CV_LOAD_IMAGE_UNCHANGED;
+    else if (channels == 5) flag = CV_LOAD_IMAGE_UNCHANGED;
     else if (channels == 6) flag = CV_LOAD_IMAGE_UNCHANGED;
     else {
         fprintf(stderr, "OpenCV can't force load with %d channels\n", channels);
     }
 
-    if(channels != 6){
+    if(channels == 2 || channels == 5 || channels == 6){
+        int fisrtChannels = (channels==2)?1:(channels==5)?4:3; //number of channels of the first image
+
+        char * first_path = strtok(filename,";");
+        char * second_path = strtok(NULL,";");
+        IplImage * firstImage = 0;
+        IplImage * secondImage = 0;
+         if((firstImage = cvLoadImage(first_path,flag))==0 || (secondImage = cvLoadImage(second_path,flag))==0){
+           fprintf(stderr, "Cannot load image \"%s\" or \"%s\"\n", first_path,second_path);
+            char buff[256];
+            sprintf(buff, "echo %s >> bad.list", filename);
+            system(buff);
+            return make_image(10,10,2);
+            //exit(0); 
+        }
+
+        int h = firstImage->height;
+        int w = firstImage->width;
+        int c = firstImage->nChannels;
+        int step = firstImage->widthStep;
+
+        //printf("[%d,%d,%d] %d\n",w,h,c,step);
+        int i,j,k;
+        unsigned char *SecondData = (unsigned char *)secondImage->imageData;
+        unsigned char *FirstData = (unsigned char *)firstImage->imageData;
+        image out = make_image(w, h, channels);
+        for(k = 0; k < channels; ++k){
+            for(i = 0; i < h; ++i){
+                for(j = 0; j < w; ++j){
+                    int dst_index = j + w*i + w*h*k;
+                    int src_index = i*step + j*c + (k%c);
+                    if(k<fisrtChannels)
+                        out.data[dst_index] = FirstData[src_index]/255.;
+                    else
+                        out.data[dst_index] = SecondData[src_index]/255.;
+                    //printf("%d %d %d %d\n",k,i,j, (k<3));
+                }
+            }
+        }
+        cvReleaseImage(&firstImage);
+        cvReleaseImage(&secondImage);
+        return out;
+    }else {
         IplImage* src = 0;
         if( (src = cvLoadImage(filename, flag)) == 0 )
         {
@@ -981,49 +1025,7 @@ image load_image_cv(char *filename, int channels)
         if(channels==3)
             rgbgr_image(out);
         return out;
-    } else {
-        //Load left and right rectified image and overlap them as a 6 channels input
-        char * left_img = strtok(filename,";");
-        char * right_img = strtok(NULL,";");
-        IplImage * rightSrc = 0;
-        IplImage * leftSrc = 0;
-        if((leftSrc = cvLoadImage(left_img,flag))==0 || (rightSrc = cvLoadImage(right_img,flag))==0){
-           fprintf(stderr, "Cannot load image \"%s\"\n", left_img);
-            char buff[256];
-            sprintf(buff, "echo %s >> bad.list", filename);
-            system(buff);
-            return make_image(10,10,6);
-            //exit(0); 
-        }
-
-        int h = leftSrc->height;
-        int w = leftSrc->width;
-        int c = leftSrc->nChannels;
-        int step = leftSrc->widthStep;
-
-        //printf("[%d,%d,%d] %d\n",w,h,c,step);
-
-        int i,j,k;
-        unsigned char *RightData = (unsigned char *)rightSrc->imageData;
-        unsigned char *LeftData = (unsigned char *)leftSrc->imageData;
-        image out = make_image(w, h, channels);
-        for(k = 0; k < channels; ++k){
-            for(i = 0; i < h; ++i){
-                for(j = 0; j < w; ++j){
-                    int dst_index = j + w*i + w*h*k;
-                    int src_index = i*step + j*c + (k%c);
-                    if(k<3)
-                        out.data[dst_index] = LeftData[src_index]/255.;
-                    else
-                        out.data[dst_index] = RightData[src_index]/255.;
-                    //printf("%d %d %d %d\n",k,i,j, (k<3));
-                }
-            }
-        }
-        cvReleaseImage(&leftSrc);
-        cvReleaseImage(&rightSrc);
-        return out;
-    }
+    } 
 }
 
 #endif

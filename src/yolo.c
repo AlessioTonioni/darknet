@@ -305,6 +305,9 @@ void validate_yolo_recall(char *cfgfile, char *weightfile, char *val_images, cha
         char * label_path = strtok(NULL," ");
 
 		image orig = load_image(image_path, 0, 0,net.c);
+		image color;
+		if(draw)
+			color = load_image(image_path, 0, 0, 3);
 		image sized = resize_image(orig, net.w, net.h);
 		//char *id = basecfg(path);
 		float *predictions = network_predict(net, sized.data);
@@ -337,9 +340,9 @@ void validate_yolo_recall(char *cfgfile, char *weightfile, char *val_images, cha
 				fclose(out);
 			}
 			if(draw){
-				draw_detections(orig, l.rows*l.cols*l.n, thresh, boxes, probs, voc_names, voc_labels, CLASSNUM);
+				draw_detections(color, l.rows*l.cols*l.n, thresh, boxes, probs, voc_names, voc_labels, CLASSNUM);
 
-				show_image(orig, "predictions");
+				show_image(color, "predictions");
 
 				#ifdef OPENCV
 				cvWaitKey(0);
@@ -398,7 +401,8 @@ void validate_yolo_recall(char *cfgfile, char *weightfile, char *val_images, cha
 			int found=0;
 			int invalid = 0;
 			for(int i=0; i<id_found.used; i++){
-				found+=id_found.array[i];
+				if(id_invalid.array[i]!=1)
+					found+=id_found.array[i];
 				invalid+=id_invalid.array[i];
 			}
 			printf("Founded: %d/%d\t%d\n", found, id_found.used-invalid,invalid);
@@ -416,7 +420,8 @@ void validate_yolo_recall(char *cfgfile, char *weightfile, char *val_images, cha
 		int found=0;
 		int invalid = 0;
 		for(int i=0; i<id_found.used; i++){
-			found+=id_found.array[i];
+			if(id_invalid.array[i]!=1)
+					found+=id_found.array[i];
 			invalid+=id_invalid.array[i];
 		}
 		fprintf(fps[j], "%d;%d;\n", found, id_found.used-invalid);
