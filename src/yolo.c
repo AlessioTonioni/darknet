@@ -23,6 +23,7 @@ image voc_labels[CLASSNUM];
 
 void train_yolo(char *cfgfile, char *weightfile, char* train_images, char* backup_directory)
 {
+	
 	//char *train_images = "/data/voc/train.txt";
 	//char *backup_directory = "/home/pjreddie/backup/";
 	srand(time(0));
@@ -85,7 +86,7 @@ void train_yolo(char *cfgfile, char *weightfile, char* train_images, char* backu
 
 		if(i%10==0)
 			printf("%d: %f, %f avg, %f rate, %lf seconds, %d images\n", i, loss, avg_loss, get_current_rate(net), sec(clock()-time), i*imgs);
-		if(i%1000==0 || (i < 1000 && i%500 == 0)){
+		if(i%5000==0 || (i < 1000 && i%500 == 0)){
 			char buff[256];
 			sprintf(buff, "%s/%s_%d.weights", backup_directory, base, i);
 			save_weights(net, buff);
@@ -430,6 +431,41 @@ void validate_yolo_recall(char *cfgfile, char *weightfile, char *val_images, cha
 	freeArray(&id_found);
 }
 
+void visualize_learned_weights(char *cfgfile, char *weightfile, char *out_dir){
+	network net = parse_network_cfg(cfgfile);
+	if(weightfile){
+		load_weights(&net, weightfile);
+	}
+	layer l = net.layers[0];
+	int num = l.n*l.c*l.size*l.size;
+	int filter_size = l.size*l.size*l.c;
+	printf("Layer params: %dX%dX%d - %d\n",l.size,l.size,l.c,l.n);
+	printf("Filter size: %d\n",filter_size);
+	float * filters = net.layers[0].filters;
+
+	for (int f_num = 0; f_num<l.n; f_num++){
+		printf("###############FILTER %d###################\n",f_num);
+		for(int channel=0; channel<l.c; channel++){
+			printf("~~~~~~~~~~~~~CHANNEL %d~~~~~~~~~~~~\n",channel);
+			printf("=========================================\n");
+			for(int r=0; r<l.size; r++){
+				printf("|");
+				for(int c=0; c<l.size; c++){
+					int target_index = c + l.size*r+l.size*l.size*channel+f_num*filter_size;
+					if(target_index>=num)
+						printf('Sono incapace di contare\n');
+					printf("%f\t",filters[target_index]);
+				}
+				printf("|\n");
+				printf("----------------------------------------\n");
+			}
+			printf("=========================================\n");
+		}
+		printf("\n\n");
+	}
+
+}
+
 void test_yolo(char *cfgfile, char *weightfile, char *filename, float thresh)
 {
 
@@ -539,6 +575,9 @@ void run_yolo(int argc, char **argv)
 			fprintf(stderr, "usage: %s %s [recall] [cfg] [val_images_txt] [out_directory] [weights (optional)] [-log (0/1)] [-draw (0/1)]\n", argv[0], argv[1]);
 			return;
 		}
+	}
+	else if(0==strcmp(argv[2], "vis_weight")){
+		visualize_learned_weights(cfg,weights,filename);
 	}
 	else if(0==strcmp(argv[2], "demo")) 
 		demo(cfg, weights, thresh, cam_index, filename, voc_names, voc_labels, CLASSNUM, frame_skip, save_video);
