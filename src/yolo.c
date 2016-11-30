@@ -431,7 +431,7 @@ void validate_yolo_recall(char *cfgfile, char *weightfile, char *val_images, cha
 	freeArray(&id_found);
 }
 
-void visualize_learned_weights(char *cfgfile, char *weightfile, char *out_dir){
+void visualize_learned_weights(char *cfgfile, char *weightfile, char *out_file){
 	network net = parse_network_cfg(cfgfile);
 	if(weightfile){
 		load_weights(&net, weightfile);
@@ -443,7 +443,14 @@ void visualize_learned_weights(char *cfgfile, char *weightfile, char *out_dir){
 	printf("Filter size: %d\n",filter_size);
 	float * filters = net.layers[0].filters;
 
-	for (int f_num = 0; f_num<l.n; f_num++){
+	FILE *f = fopen(out_file,"w");
+	if(f==NULL){
+		printf("Error opening file!\n");
+		exit(1);
+	}
+
+	for (int f_num = 0; f_num<l.n; f_num++){ 
+		fprintf(f,"###############FILTER %d###################\n",f_num);
 		printf("###############FILTER %d###################\n",f_num);
 		for(int channel=0; channel<l.c; channel++){
 			printf("~~~~~~~~~~~~~CHANNEL %d~~~~~~~~~~~~\n",channel);
@@ -455,15 +462,19 @@ void visualize_learned_weights(char *cfgfile, char *weightfile, char *out_dir){
 					if(target_index>=num)
 						printf('Sono incapace di contare\n');
 					printf("%f\t",filters[target_index]);
+					fprintf(f,"%f;",filters[target_index]);
 				}
-				printf("|\n");
+				fprintf(f,"\n");
 				printf("----------------------------------------\n");
 			}
+			//visualize filter
+			fprintf(f,"\n");
 			printf("=========================================\n");
 		}
+		fprintf(f,"\n\n");
 		printf("\n\n");
 	}
-
+	fclose(f);
 }
 
 void test_yolo(char *cfgfile, char *weightfile, char *filename, float thresh)
